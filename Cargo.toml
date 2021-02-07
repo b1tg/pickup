@@ -1,0 +1,10 @@
+[package]
+name = "rcopy"
+version = "0.1.0"
+authors = ["b1"]
+edition = "2018"
+
+[dependencies]
+windows = { git = "https://github.com/microsoft/windows-rs" }
+bindings = { path = "bindings" }
+rand = "0.7.3"
