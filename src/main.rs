@@ -1,14 +1,15 @@
-#![feature(asm)]
+// #![feature(asm)]
 use std::{collections::VecDeque, env::current_dir, ffi::OsString};
 use std::{intrinsics::copy_nonoverlapping, mem::size_of, ptr::null};
 // #![windows_subsystem = "windows"]
 use bindings::{
+    windows::win32::com::IDataObject,
+    windows::win32::com::OleSetClipboard,
     windows::win32::data_exchange::CloseClipboard,
     windows::win32::data_exchange::EmptyClipboard,
     windows::win32::data_exchange::OpenClipboard,
     windows::win32::data_exchange::SetClipboardData,
     windows::win32::shell::DROPFILES,
-    // windows::BOOL,
     // windows::TRUE,
     // windows::FALSE
     windows::win32::system_services::GlobalAlloc,
@@ -17,8 +18,8 @@ use bindings::{
     windows::win32::system_services::VirtualAlloc,
     windows::win32::system_services::HANDLE,
     windows::win32::windows_and_messaging::HWND,
-    windows::win32::com::OleSetClipboard,
-    windows::win32::com::IDataObject,
+    // windows::BOOL,
+    windows::{Result, BOOL},
 };
 pub const PAGE_EXECUTE_READWRITE: u32 = 0x40;
 pub const MEM_COMMIT: u32 = 0x1000;
@@ -30,14 +31,15 @@ pub const CF_HDROP: u32 = 15;
 //     u_format: u32,
 //     h_mem: HANDLE
 // ) -> HANDLE
-pub struct BOOL(pub i32);
-use std::alloc::{GlobalAlloc, Layout, alloc};
-use std::ptr::null_mut;
 use std::alloc::System;
+use std::alloc::{alloc, GlobalAlloc, Layout};
+use std::ptr::null_mut;
 struct MyAllocator;
 
 unsafe impl GlobalAlloc for MyAllocator {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 { null_mut() }
+    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+        null_mut()
+    }
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 }
 use glob::glob;
@@ -47,9 +49,7 @@ use glob::glob;
 static GLOBAL: System = System;
 use std::ffi::OsStr;
 
-
 // fn get_dntl(entries: Vec<OsString>) -> Vec<u16> {
-
 
 //     for entry in entries {
 
@@ -60,12 +60,11 @@ use std::ffi::OsStr;
 // }
 use std::os::windows::ffi::OsStrExt;
 fn main() {
-
-
     let argv: Vec<String> = std::env::args().collect();
 
     if argv.len() < 2 {
-        println!(r#"
+        println!(
+            r#"
         
 Usage: rcopy [file pattern]
 
@@ -80,8 +79,7 @@ Exameple:
     rcopy src
         
         "#
-    
-    );
+        );
         return;
     }
 
@@ -96,10 +94,10 @@ Exameple:
                     println!("got {:?}", &path.display());
                     let target = cur_dir.join(&path);
                     entries.push(target.into_os_string());
-                },
+                }
                 Err(e) => {
                     println!("fail got {:?}", e);
-                },
+                }
             }
         }
     }
@@ -113,8 +111,6 @@ Exameple:
     }
     buf.push(0);
     // buf.push(0);
-    
-
 
     println!("entries: {:?}", &entries);
     // return;
@@ -172,15 +168,14 @@ Exameple:
     // 00000000`00d907ac 65 00 2e 00 64 00 6c 00 6c 00 00 00 ab ab ab ab ab ab  e...d.l.l.........
     // 00000000`00d907be ab ab 00 00 00 00 00 00 00 00 43 73 53 6e 76 da 00 00  ..........CsSnv...
     // 00000000`00d907d0 18 29 d9 00 d8 02 d9 00 ee fe ee fe ee fe ee fe ee fe  .)
-    
-    let mut buf = vec![];
-    for (i, c) in file.into_iter().enumerate() {
-        // file_wide[i] = *c as u16;
-        buf.push(*c as u16);
-    }
-    buf.push(0);
-    buf.push(0);
 
+    // let mut buf = vec![];
+    // for (i, c) in file.into_iter().enumerate() {
+    //     // file_wide[i] = *c as u16;
+    //     buf.push(*c as u16);
+    // }
+    // buf.push(0);
+    // buf.push(0);
 
     // buf.push(0);
     // dbg!(&file_wide);
@@ -206,23 +201,27 @@ Exameple:
 
         // let h_global = GlobalAlloc(0x0002 | 0x0040, dropsize);
         // let mut h_global = vec![0u8;dropsize];
-        let mut h_global = vec![0u8;buf.len()*2 + 8];
+        let mut h_global = vec![0u8; buf.len() * 2 + 200];
         // let mut dropfiles: *mut DROPFILES = GlobalLock(h_global) as *mut DROPFILES;
         let dropfiles: *mut DROPFILES = h_global.as_mut_ptr() as *mut DROPFILES;
 
         //    (*dropfiles);
-        (*dropfiles).p_files = size_of::<*const DROPFILES>() as u32;
-        let size = size_of::<DROPFILES>() as u32;
-        // dbg!(size);
+        let p_files = size_of::<DROPFILES>() as u32;
+        dbg!(p_files);
+        (*dropfiles).p_files = p_files;
         // (*dropfiles).p_files = 0x14;
-        (*dropfiles).f_wide = core::mem::transmute(1);
+        (*dropfiles).f_wide = BOOL(1);
 
         let buf_ptr = buf.as_ptr();
         //    let pt = (*dropfiles).pt;
         //    let pt_ptr = &pt as *const u16;
 
         // let dst: *mut u16 = core::mem::transmute(dropfiles);
-        copy_nonoverlapping(buf_ptr, h_global.as_mut_ptr().offset(size as _) as *mut u16, buf.len());
+        copy_nonoverlapping(
+            buf_ptr,
+            h_global.as_mut_ptr().offset(p_files as _) as *mut u16,
+            buf.len(),
+        );
         // copy_nonoverlapping(1, (h_global.as_mut_ptr() as *mut u16).offset(8), 1);
 
         println!("h_global: {:p}", h_global.as_mut_ptr());
@@ -230,9 +229,9 @@ Exameple:
         let buf_ptr: *const *const u16 = &buf_ptr as _;
         println!("buf_ptr: {:p}", buf_ptr);
         //    let h_mem:HANDLE = buf_ptr as;
-        let  dst = &mut h_global.as_mut_ptr() as *mut *mut u8;
+        // let  dst = &mut h_global.as_mut_ptr() as *mut *mut u8;
         // let dst_ptr = &mut dst as *mut *mut *mut u16;
-        let h_mem: HANDLE = core::mem::transmute(dst);
+        let h_mem: HANDLE = core::mem::transmute(h_global.as_mut_ptr());
 
         OpenClipboard(HWND(0));
         EmptyClipboard();
