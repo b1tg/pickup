@@ -147,6 +147,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pickup"
+version = "0.1.0"
+dependencies = [
+ "bindings",
+ "glob",
+ "rand",
+ "windows",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -234,16 +244,6 @@ dependencies = [
  "crossbeam-utils",
  "lazy_static",
  "num_cpus",
-]
-
-[[package]]
-name = "rcopy"
-version = "0.1.0"
-dependencies = [
- "bindings",
- "glob",
- "rand",
- "windows",
 ]
 
 [[package]]

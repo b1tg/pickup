@@ -1,5 +1,5 @@
 [package]
-name = "rcopy"
+name = "pickup"
 version = "0.1.0"
 authors = ["b1"]
 edition = "2018"
