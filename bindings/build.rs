@@ -14,6 +14,9 @@ fn main() {
         windows::win32::windows_and_messaging::HWND
         windows::win32::system_services::HANDLE
         windows::win32::shell::DROPFILES
+
+        windows::win32::com::OleSetClipboard
+        windows::win32::com::IDataObject
         // windows::BOOL
         // windows::TRUE
         // windows::FALSE

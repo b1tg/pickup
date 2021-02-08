@@ -8,3 +8,4 @@ edition = "2018"
 windows = { git = "https://github.com/microsoft/windows-rs" }
 bindings = { path = "bindings" }
 rand = "0.7.3"
+glob = "0.3.0"

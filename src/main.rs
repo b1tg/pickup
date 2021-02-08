@@ -1,5 +1,5 @@
 #![feature(asm)]
-use std::collections::VecDeque;
+use std::{collections::VecDeque, env::current_dir, ffi::OsString};
 use std::{intrinsics::copy_nonoverlapping, mem::size_of, ptr::null};
 // #![windows_subsystem = "windows"]
 use bindings::{
@@ -17,6 +17,8 @@ use bindings::{
     windows::win32::system_services::VirtualAlloc,
     windows::win32::system_services::HANDLE,
     windows::win32::windows_and_messaging::HWND,
+    windows::win32::com::OleSetClipboard,
+    windows::win32::com::IDataObject,
 };
 pub const PAGE_EXECUTE_READWRITE: u32 = 0x40;
 pub const MEM_COMMIT: u32 = 0x1000;
@@ -29,9 +31,95 @@ pub const CF_HDROP: u32 = 15;
 //     h_mem: HANDLE
 // ) -> HANDLE
 pub struct BOOL(pub i32);
+use std::alloc::{GlobalAlloc, Layout, alloc};
+use std::ptr::null_mut;
+use std::alloc::System;
+struct MyAllocator;
 
+unsafe impl GlobalAlloc for MyAllocator {
+    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 { null_mut() }
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
+}
+use glob::glob;
+// #[global_allocator]
+// static A: MyAllocator = MyAllocator;
+#[global_allocator]
+static GLOBAL: System = System;
+use std::ffi::OsStr;
+
+
+// fn get_dntl(entries: Vec<OsString>) -> Vec<u16> {
+
+
+//     for entry in entries {
+
+//     }
+
+//     vec![]
+
+// }
+use std::os::windows::ffi::OsStrExt;
 fn main() {
+
+
+    let argv: Vec<String> = std::env::args().collect();
+
+    if argv.len() < 2 {
+        println!(r#"
+        
+Usage: rcopy [file pattern]
+
+Exameple: 
+    # copy all exe file in target subdirectories
+    rcopy "target/**/*.exe"
+
+    # copy single file
+    rcopy Cargo.toml
+
+    # copy folder
+    rcopy src
+        
+        "#
+    
+    );
+        return;
+    }
+
+    let mut entries = vec![];
+    let cur_dir = current_dir().unwrap();
+    for i in 1..argv.len() {
+        let pattern = &argv[i];
+        dbg!(pattern);
+        for entry in glob(pattern).expect("Failed to read glob pattern") {
+            match entry {
+                Ok(path) => {
+                    println!("got {:?}", &path.display());
+                    let target = cur_dir.join(&path);
+                    entries.push(target.into_os_string());
+                },
+                Err(e) => {
+                    println!("fail got {:?}", e);
+                },
+            }
+        }
+    }
+
+    // let buf: Vec<u16> = get_dntl(&entries);
+    let mut buf: Vec<u16> = vec![];
+    for entry in &entries {
+        let mut result: Vec<u16> = entry.encode_wide().collect();
+        buf.append(&mut result);
+        buf.push(0);
+    }
+    buf.push(0);
+    // buf.push(0);
+    
+
+
+    println!("entries: {:?}", &entries);
+    // return;
     // let file = "";
+    // let file = b"F:\\bins\\sqlite3.exe\0F:\\bins\\rcopy.exe\0F:\\bins\\nim-1.4.2\\do";
     let file = b"F:\\bins\\sqlite3.exe";
 
     // 0:000:x86> dd poi(poi(esp+8))
@@ -84,21 +172,16 @@ fn main() {
     // 00000000`00d907ac 65 00 2e 00 64 00 6c 00 6c 00 00 00 ab ab ab ab ab ab  e...d.l.l.........
     // 00000000`00d907be ab ab 00 00 00 00 00 00 00 00 43 73 53 6e 76 da 00 00  ..........CsSnv...
     // 00000000`00d907d0 18 29 d9 00 d8 02 d9 00 ee fe ee fe ee fe ee fe ee fe  .)
+    
     let mut buf = vec![];
-    // let mut buf  = vec![0x14u16];
-    // buf.append(&mut vec![0x0u16;7]);
-    // buf.append(&mut vec![0x1u16]);
-    // buf.append(&mut vec![0x0u16]);
-
-    // let mut file_wide = vec![0u16; file.len()];
-    // let mut file_wide: VecDeque<u16> = VecDeque::with_capacity(file.len());
-
     for (i, c) in file.into_iter().enumerate() {
         // file_wide[i] = *c as u16;
         buf.push(*c as u16);
     }
     buf.push(0);
     buf.push(0);
+
+
     // buf.push(0);
     // dbg!(&file_wide);
 
@@ -113,31 +196,42 @@ fn main() {
 
     // file_wide.push_back(0x0);
 
-    println!("{:X?}", buf);
+    println!("buf: {:X?}", buf);
 
     unsafe {
         // let mut dropfiles: *mut DROPFILES;
-        let dropsize = 200 + (file.len() + 1) * 2;
+        // let dropsize =8+ buf.len();
+        // let dropsize = 200+buf.len() *2;
         // asm!("int 3");
 
-        let h_global = GlobalAlloc(0x0002 | 0x0040, dropsize);
-        let mut dropfiles: *mut DROPFILES = GlobalLock(h_global) as *mut DROPFILES;
+        // let h_global = GlobalAlloc(0x0002 | 0x0040, dropsize);
+        // let mut h_global = vec![0u8;dropsize];
+        let mut h_global = vec![0u8;buf.len()*2 + 8];
+        // let mut dropfiles: *mut DROPFILES = GlobalLock(h_global) as *mut DROPFILES;
+        let dropfiles: *mut DROPFILES = h_global.as_mut_ptr() as *mut DROPFILES;
 
         //    (*dropfiles);
         (*dropfiles).p_files = size_of::<*const DROPFILES>() as u32;
+        let size = size_of::<DROPFILES>() as u32;
+        // dbg!(size);
+        // (*dropfiles).p_files = 0x14;
         (*dropfiles).f_wide = core::mem::transmute(1);
 
         let buf_ptr = buf.as_ptr();
         //    let pt = (*dropfiles).pt;
         //    let pt_ptr = &pt as *const u16;
 
-        let dst: *mut u16 = core::mem::transmute(dropfiles);
-        copy_nonoverlapping(buf_ptr, dst.offset(2), (file.len() + 1) * 2);
+        // let dst: *mut u16 = core::mem::transmute(dropfiles);
+        copy_nonoverlapping(buf_ptr, h_global.as_mut_ptr().offset(size as _) as *mut u16, buf.len());
+        // copy_nonoverlapping(1, (h_global.as_mut_ptr() as *mut u16).offset(8), 1);
 
+        println!("h_global: {:p}", h_global.as_mut_ptr());
         println!("buf_ptr: {:p}", buf_ptr);
         let buf_ptr: *const *const u16 = &buf_ptr as _;
         println!("buf_ptr: {:p}", buf_ptr);
         //    let h_mem:HANDLE = buf_ptr as;
+        let  dst = &mut h_global.as_mut_ptr() as *mut *mut u8;
+        // let dst_ptr = &mut dst as *mut *mut *mut u16;
         let h_mem: HANDLE = core::mem::transmute(dst);
 
         OpenClipboard(HWND(0));
@@ -145,7 +239,44 @@ fn main() {
         CloseClipboard();
 
         OpenClipboard(HWND(0));
+        // bp user32!SetClipboardData
         SetClipboardData(CF_HDROP, h_mem);
         CloseClipboard();
+    }
+}
+
+// x64
+// 0:000> dd poi(rdx)
+// 0000028c`f440bbd0  00000014 00000000 00000000 00000000
+// 0000028c`f440bbe0  00000001 003a0046 0062005c 006e0069
+// 0000028c`f440bbf0  005c0073 00630072 0070006f 002e0079
+// 0000028c`f440bc00  00780065 00000065 abab0000 abababab
+// 0000028c`f440bc10  abababab abababab 0000abab 00000000
+// 0000028c`f440bc20  00000000 00000000 f5d60008 0000028c
+// 0000028c`f440bc30  00000000 00000000 0374fb2b 00005351
+// 0000028c`f440bc40  f440bf20 0000028c f440b730 0000028c
+
+// 0:000> dd poi(rdx)
+// 00000282`8460c1b0  00000014 00000000 00000000 00000000
+// 00000282`8460c1c0  00000001 003a0046 0062005c 006e0069
+// 00000282`8460c1d0  005c0073 00710073 0069006c 00650074
+// 00000282`8460c1e0  002e0033 00780065 00000065 abab0000
+// 00000282`8460c1f0  abababab abababab abababab 0000abab
+// 00000282`8460c200  00000000 00000000 85e90008 00000282
+// 00000282`8460c210  00000000 00000000 0a3825a9 0000bd23
+// 00000282`8460c220  8460bc40 00000282 845fc610 00000282
+
+#[cfg(test)]
+mod tests {
+
+    use glob::glob;
+    #[test]
+    fn test_glob() {
+        for entry in glob("target/**/*.exe").expect("Failed to read glob pattern") {
+            match entry {
+                Ok(path) => println!("{:?}", path.display()),
+                Err(e) => println!("{:?}", e),
+            }
+        }
     }
 }
