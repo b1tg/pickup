@@ -11,7 +11,7 @@ pub type Clip = osx_clip::OSXClipboard;
 #[cfg(target_os = "windows")]
 mod win_clip;
 #[cfg(target_os = "windows")]
-pub type Clip = win_clip::OSXClipboard;
+pub type Clip = win_clip::WinClipboard;
 
 const USAGE: &str = r#"
 Usage: pickup [file patterns]
