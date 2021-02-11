@@ -1,18 +1,17 @@
 use glob::glob;
-use std::alloc::System;
 use std::env::current_dir;
-use std::os::windows::ffi::OsStrExt;
-use std::{intrinsics::copy_nonoverlapping, mem::size_of};
+mod common;
+pub use common::Clipboard;
 
-use bindings::{
-    windows::win32::data_exchange::CloseClipboard, windows::win32::data_exchange::EmptyClipboard,
-    windows::win32::data_exchange::OpenClipboard, windows::win32::data_exchange::SetClipboardData,
-    windows::win32::shell::DROPFILES, windows::win32::windows_and_messaging::HWND, windows::BOOL,
-};
+#[cfg(target_os = "macos")]
+mod osx_clip;
+#[cfg(target_os = "macos")]
+pub type Clip = osx_clip::OSXClipboard;
 
-pub const CF_HDROP: u32 = 15;
-#[global_allocator]
-static GLOBAL: System = System;
+#[cfg(target_os = "windows")]
+mod win_clip;
+#[cfg(target_os = "windows")]
+pub type Clip = win_clip::WinClipboard;
 
 const USAGE: &str = r#"
 Usage: pickup [file patterns]
@@ -54,46 +53,18 @@ fn main() {
         println!("[-] The file you specified cannot be found");
         return;
     }
-    let mut clip_buf: Vec<u16> = vec![];
-    for entry in &entries {
-        let mut result: Vec<u16> = entry.encode_wide().collect();
-        clip_buf.append(&mut result);
-        clip_buf.push(0);
-    }
-    clip_buf.push(0);
-    let p_files = size_of::<DROPFILES>();
-    let mut h_global = vec![0u8; clip_buf.len() * 2 + p_files];
-    let dropfiles: *mut DROPFILES = h_global.as_mut_ptr() as *mut DROPFILES;
-    let buf_ptr = clip_buf.as_ptr();
-    unsafe {
-        (*dropfiles).p_files = p_files as _;
-        (*dropfiles).f_wide = BOOL(1);
-        copy_nonoverlapping(
-            buf_ptr,
-            h_global.as_mut_ptr().offset(p_files as _) as *mut u16,
-            clip_buf.len(),
-        );
-        let h_mem = core::mem::transmute(h_global.as_mut_ptr());
-        OpenClipboard(HWND(0));
-        EmptyClipboard();
-        CloseClipboard();
-
-        OpenClipboard(HWND(0));
-        SetClipboardData(CF_HDROP, h_mem);
-        CloseClipboard();
-    }
+    let clip = Clip::new(entries).unwrap();
+    let _ = clip.copy_files();
 }
 
 #[cfg(test)]
 mod tests {
     use glob::glob;
     #[test]
-    fn test_glob() {
-        for entry in glob("target/**/*.exe").expect("Failed to read glob pattern") {
-            match entry {
-                Ok(path) => println!("{:?}", path.display()),
-                Err(e) => println!("{:?}", e),
-            }
-        }
+    fn test_glob() {}
+
+    #[test]
+    fn test_obj() {
+        // let pb: NSPasteboard.general;
     }
 }
