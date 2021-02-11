@@ -1,6 +1,6 @@
 # Pickup
 
-Copy files to clipboard from command line, expecting to achieve the same effect as right-click copy.
+Copy files to clipboard from command line, expecting to achieve the same effect as right-click copy. Now support Windows and OSX.
 
 
 # How to use
@@ -15,10 +15,10 @@ Step 1: clone & build
 git clone https://github.com/b1tg/pickup.git
 cd pickup
 cargo build --release
-# you can find pickup.exe in ./target/release/
+# you can find pickup or pickup.exe in ./target/release/
 ```
 
-Step 2 (optional): add  `pickup.exe`  to you PATH
+Step 2 (optional): add  `pickup`  to you PATH
 
 ## Usage
 
@@ -29,14 +29,21 @@ Exameple:
     # copy single file
     pickup Cargo.toml
     
-    # copy all exe file in target subdirectories (need double quotation)
-    pickup "target/**/*.exe"
+    # copy all pdf file in target subdirectories (need double quotation)
+    pickup "docs/**/*.pdf"
+
 
     # copy folder
     pickup src
 ```
+## Demo
 
-![usage](./usage.gif)
+### On Windows:
+
+![demo on windows](./images/pickup-demo-win.gif)
+
+### On OSX:
+![demo on osx](./images/pickup-demo-osx.gif)
 
 
 
@@ -44,3 +51,4 @@ Exameple:
 
 - https://stackoverflow.com/q/25708895
 - https://github.com/roryyorke/picellif
+- https://github.com/yujinqiu/pbadd

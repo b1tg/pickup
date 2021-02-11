@@ -20,8 +20,8 @@ Exameple:
     # copy single file
     pickup Cargo.toml
     
-    # copy all exe file in target subdirectories
-    pickup "target/**/*.exe"
+    # copy all pdf file in target subdirectories
+    pickup "docs/**/*.pdf"
 
     # copy folder
     pickup src
