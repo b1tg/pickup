@@ -2,6 +2,7 @@
 name = "pickup"
 version = "0.2.0"
 authors = ["b1"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
