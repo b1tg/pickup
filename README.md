@@ -1,5 +1,7 @@
 # Pickup
 
+[中文文档](./README_CN.md)
+
 Copy files to clipboard from command line, expecting to achieve the same effect as right-click copy. Now support Windows and OSX.
 
 
