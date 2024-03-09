@@ -13,6 +13,11 @@ mod win_clip;
 #[cfg(target_os = "windows")]
 pub type Clip = win_clip::WinClipboard;
 
+#[cfg(target_os = "linux")]
+mod linux_clip;
+#[cfg(target_os = "linux")]
+pub type Clip = linux_clip::LinuxClipboard;
+
 const USAGE: &str = r#"
 Usage: pickup [file patterns]
 

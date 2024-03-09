@@ -2,7 +2,7 @@
 
 [中文文档](./README_CN.md)
 
-Copy files to clipboard from command line, expecting to achieve the same effect as right-click copy. Now support Windows and OSX.
+Copy files to clipboard from command line, expecting to achieve the same effect as right-click copy. Now support Windows, OSX and Linux.
 
 
 # How to use
@@ -21,6 +21,9 @@ cargo build --release
 ```
 
 Step 2 (optional): add  `pickup`  to you PATH
+
+Step 3 (only for linux): install xclip
+
 
 ## Usage
 
